@@ -25,7 +25,7 @@ namespace TaskManagementSystem_CRUD.Features.Task.Queries.GetTasks_Date
             var response = new GetTasksQueryResponseDto();
 
             var result = await _dbContext.Tasks
-                .Where(c => c.StartDate <= request.Date && c.FinishDate <= request.Date && c.State == "InProgress")
+                .Where(c => c.StartDate <= request.Date && c.FinishDate >= request.Date && c.State == "InProgress")
                 .ToListAsync(cancellationToken);
             
             
