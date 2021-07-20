@@ -3,6 +3,7 @@ using EFDataAccess.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Threading;
@@ -15,9 +16,13 @@ namespace TaskManagementSystem_CRUD.Features.Task.Queries.GetTask
     public class GetTaskQueryHandler : IRequestHandler<GetTaskQuery, TaskResponseDto>
     {
         private readonly ITaskDbContext _dbContext;
-        public GetTaskQueryHandler(ITaskDbContext dbContext)
+        private readonly ILogger<GetTaskQueryHandler> _logger;
+
+        public GetTaskQueryHandler(ITaskDbContext dbContext,
+            ILogger<GetTaskQueryHandler> logger)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<TaskResponseDto> Handle(GetTaskQuery request, CancellationToken cancellationToken)
@@ -29,16 +34,21 @@ namespace TaskManagementSystem_CRUD.Features.Task.Queries.GetTask
             {
                 return response;
             }
+            _logger.LogDebug("Attempting to get a task with id: [{TaskId}]", request.TaskId);
             
             clientEntity = await _dbContext.Tasks
                 .Where(c => c.TaskId == request.TaskId)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            if(clientEntity == null)
+            
+            if (clientEntity == null)
             {
+                _logger.LogDebug("No task received with id: [{TaskId}]", request.TaskId);
                 return response;
             }
             
+            _logger.LogDebug("Successfully task received with id: [{TaskId}]", request.TaskId);
+
             response = ExtTaskToExtTaskResponseDtoMapper.Map(clientEntity);
             
             return response;

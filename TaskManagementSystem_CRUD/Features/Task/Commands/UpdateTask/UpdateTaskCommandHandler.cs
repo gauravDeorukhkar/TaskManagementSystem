@@ -3,6 +3,7 @@ using EFDataAccess.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Threading;
@@ -14,33 +15,39 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
     public class UpdateTaskCommandHandler : IRequestHandler<UpdateTaskCommand, UpdateTaskResponse>
     {
         private readonly ITaskDbContext _dbContext;
+        private readonly ILogger<UpdateTaskCommandHandler> _logger;
 
-        public UpdateTaskCommandHandler(ITaskDbContext dbContext)
+        public UpdateTaskCommandHandler(ITaskDbContext dbContext,
+            ILogger<UpdateTaskCommandHandler> logger)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         public async Task<UpdateTaskResponse> Handle(UpdateTaskCommand request, CancellationToken cancellationToken)
         {
             
             if (request == null)
             {
+                _logger.LogDebug("The Update Task Request was empty.");
                 return new UpdateTaskResponse
                 {
                     TaskId = -1,
                     StatusMessage = "Please provide a TaskId to be updated."
                 };
             }
+            
 
             var clientEntity = UpdateTaskCommandToTaskMapper.Map(request);
             EntityEntry<TaskDetails> persistedEntry;
             UpdateTaskResponse response;
 
             // ** Check if State has changed **
+            _logger.LogDebug("Attemptimg to check if the State of Task has been Changed.");
 
             var task = await _dbContext.Tasks.FirstAsync(item => item.TaskId == clientEntity.TaskId);
-            //_dbContext.Entry(task).State = EntityState.Detached;
+            
             await _dbContext.SaveChangesAsync(cancellationToken);
-            //
+            
 
             if (task.State != clientEntity.State)
             {
@@ -49,6 +56,9 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
                 // ** SubTasks Only **
                 if (clientEntity.MainTaskId != null)
                 {
+                    _logger.LogDebug("Checking if Task State Needs tobe Updated with Subtask Update.");
+
+
                     if (clientEntity.State == "Completed")
                     {
                         var result = await _dbContext.Tasks
@@ -57,6 +67,7 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
 
                         if (result.Count != 0)
                         {
+                            _logger.LogDebug("Checking the state of other subtask when current State is tobe updated as Completed");
                             //More Subtask present
                             foreach (var entity in result)
                             {
@@ -67,6 +78,8 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
 
                                     persistedEntry = _dbContext.Tasks.Update(clientEntity);
                                     await _dbContext.SaveChangesAsync(cancellationToken);
+
+                                    _logger.LogDebug("Only Subtask by the name [{Name}] and [{TaskId}] is updated to Completed", clientEntity.Name,clientEntity.TaskId);
 
                                     response = new UpdateTaskResponse
                                     {
@@ -98,6 +111,8 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
 
                                 _dbContext.Tasks.Update(task_1);
                                 await _dbContext.SaveChangesAsync(cancellationToken);
+                                _logger.LogDebug("All subtask are Completed so updating the state of Main Task to Completed by the id: [{TaskId}] ", task_1.TaskId);
+
                             }
 
                             response = new UpdateTaskResponse
@@ -113,6 +128,8 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
 
                         else
                         {
+                            _logger.LogDebug("Updating the only Subtask with id [{TaskId}] and corresponding Maintask with id [{MainTaskId}] to Completed", clientEntity.TaskId,clientEntity.MainTaskId);
+
                             persistedEntry = _dbContext.Tasks.Update(clientEntity);
                             await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -128,6 +145,10 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
                                 _dbContext.Tasks.Update(task_2);
                                 await _dbContext.SaveChangesAsync(cancellationToken);
                             }
+
+                            _logger.LogDebug("Successfully updated the Subtask with id [{TaskId}] and corresponding Maintask with id [{MainTaskId}] to Completed", clientEntity.TaskId, clientEntity.MainTaskId);
+
+
                             response = new UpdateTaskResponse
                             {
                                 TaskId = persistedEntry.Entity.TaskId,
@@ -142,6 +163,8 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
 
                     if (clientEntity.State == "InProgress")
                     {
+                        _logger.LogDebug("Updating the Subtask with id [{TaskId}] and corresponding Maintask with id [{MainTaskId}] to InProgress", clientEntity.TaskId, clientEntity.MainTaskId);
+
                         persistedEntry = _dbContext.Tasks.Update(clientEntity);
                         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -157,6 +180,10 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
                             _dbContext.Tasks.Update(task_3);
                             await _dbContext.SaveChangesAsync(cancellationToken);
                         }
+
+                        _logger.LogDebug("Successfully updated the Subtask with id [{TaskId}] and corresponding Maintask with id [{MainTaskId}] to Inprogress", clientEntity.TaskId, clientEntity.MainTaskId);
+
+
                         response = new UpdateTaskResponse
                         {
                             TaskId = persistedEntry.Entity.TaskId,
@@ -174,16 +201,17 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
 
                         if (result.Count != 0)
                         {
-                            //More Subtask present
+                            // **More Subtask present**
                             foreach (var entity in result)
                             {
 
                                 if (entity.State == "InProgress")
                                 {
-                                    // **If any Subtask belonging to the same MainTask is not in Completed State, Update the Subtask**
+                                    // **If any Subtask belonging to the same MainTask is in InProgress State, Update only the Subtask**
 
                                     persistedEntry = _dbContext.Tasks.Update(clientEntity);
                                     await _dbContext.SaveChangesAsync(cancellationToken);
+                                    _logger.LogDebug("Successfully updated the Subtask with id [{TaskId}] to Planned", clientEntity.TaskId);
 
                                     response = new UpdateTaskResponse
                                     {
@@ -216,6 +244,7 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
                                 _dbContext.Tasks.Update(task_4);
                                 await _dbContext.SaveChangesAsync(cancellationToken);
                             }
+                            _logger.LogDebug("Successfully updated the Subtask with id [{TaskId}] and corresponding Maintask with id [{MainTaskId}] to Planned", clientEntity.TaskId, clientEntity.MainTaskId);
 
                             response = new UpdateTaskResponse
                             {
@@ -279,6 +308,8 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
 
                     if (result.Count != 0)
                     {
+                        _logger.LogDebug("Update the Subtasks belonging to this MainTask with id: [{TaskId}]", clientEntity.TaskId);
+
                         response = new UpdateTaskResponse
                         {
                             TaskId = -1,
@@ -302,12 +333,15 @@ namespace TaskManagementSystem_CRUD.Features.Task.Commands.UpdateTask
 
 
             }
-            // **If State has not changed **
+            // **If state has not changed **
             else
             {
+                _logger.LogDebug("No State change so update the given task with id : [{TaskId}]", clientEntity.TaskId);
+
                 persistedEntry = _dbContext.Tasks.Update(clientEntity);
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                
+
+                _logger.LogDebug("Succefully updated the given task with id : [{TaskId}]", clientEntity.TaskId);
                 response = new UpdateTaskResponse
                 {
                     TaskId = persistedEntry.Entity.TaskId,
