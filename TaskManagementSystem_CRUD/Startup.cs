@@ -11,7 +11,9 @@ using Microsoft.OpenApi.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using MediatR;
 
 namespace TaskManagementSystem_CRUD
 {
@@ -27,15 +29,23 @@ namespace TaskManagementSystem_CRUD
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            //services.AddAutoMapper(Assembly.GetExecutingAssembly());
+            
             services.AddDbContext<TaskDbContext>(options =>
             {
-                options.UseSqlServer(Configuration.GetConnectionString("Default"));
+                options.UseSqlServer(Configuration.GetConnectionString("Default")).UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
             });
+
+            //services.AddDbContext<TaskDbContext>(c =>
+            //c.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
+            services.AddScoped<ITaskDbContext>(provider =>provider.GetService<TaskDbContext>());
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TaskManagementSystem_CRUD", Version = "v1" });
             });
+
+            services.AddMediatR(Assembly.GetExecutingAssembly());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

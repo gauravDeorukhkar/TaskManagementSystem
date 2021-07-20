@@ -8,8 +8,9 @@ using System.Threading.Tasks;
 
 namespace EFDataAccess
 {
-    public class TaskDbContext : DbContext
+    public class TaskDbContext : DbContext, ITaskDbContext
     {
+        
         public TaskDbContext(DbContextOptions<TaskDbContext> options): base(options){ }
 
         public DbSet<TaskDetails> Tasks { get; set; }

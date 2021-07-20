@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="MediatR" Version="9.0.0" />
+    <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="9.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="5.0.8">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -15,6 +16,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EFDataAccess\EFDataAccess.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Common\" />
   </ItemGroup>
 
 </Project>
